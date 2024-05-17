@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react'
-import { deleteMercado, listMercados, listPaises, listComitentes } from '../services/ComitenteService'
+import { deleteMercado, listMercados, listPaises, listComitentes } from '../services/EntidadesService'
 import { useNavigate } from 'react-router-dom'
 
 const ListMercadosComponent = () => {
@@ -8,23 +8,20 @@ const ListMercadosComponent = () => {
    const [comitentes, setComitentes] = useState([])
    const [paises, setPaises] = useState([])
 
+   //Inicializo los errores en validos
    const [errors, setErrors] = useState({
     removeMercado: ''
    })
 
    const navigator = useNavigate();
 
+   //Inicializo los arreglos de los campos
    useEffect(() => {
-        getAllPaises()
+        getAllPaises(),
+        getAllComitentes(),
+        getAllMercados()
    }, [])
 
-   useEffect(() => {
-        getAllMercados()
-    }, [])
-
-    useEffect(() => {
-        getAllComitentes()
-    }, [])
 
    function getAllPaises() {
     listPaises().then((response) => {
@@ -41,28 +38,6 @@ const ListMercadosComponent = () => {
             console.error(error);
         })
    }
-
-    function getNombrePaises(paisesId) {
-        let txt = "";
-
-        //Para cada id busco el nombre del pais al que corresponde
-        paises.forEach(nombrePais);
-        
-        function nombrePais(value, index, array) {
-
-            let m = paises.find(buscarCoincidencia)
-
-            function buscarCoincidencia(value2, index, array) {
-              return value == value2.id;
-            }
-
-          txt += m["id"] + ": " + m["codigo"] + ", ";
-        }
-
-        return txt.slice(0,-2);
-    }
-
-
 
     function getAllMercados() {
         listMercados().then((response) => {
@@ -82,25 +57,21 @@ const ListMercadosComponent = () => {
 
    function removeMercado(id){
 
-        //Compruebo que el mercado se puede borrar, es decir que no dejo algun comitente sin mercado
-
         const errorsCopy = {... errors} 
 
-        //console.log(comitentes);
-
+        //Compruebo que el mercado se puede borrar, es decir que no dejo algun comitente sin mercado
         let operacionInvalida = comitentes.some((c) => { 
-            //console.log(c.mercadosId[0] == id);
             return (c.mercadosId[0] == id && c.mercadosId.length == 1); })
 
-        console.log(operacionInvalida);
-
         if(operacionInvalida) {
+            // Agrego error ya que no se puede borrar campo
             errorsCopy.removeMercado = 'No se puede eliminar mercado con id ' + id + ' porque un comitente lo tiene asignado como unico mercado.'
-            console.log("Validacion correcta");
         }
         else
         {
             errorsCopy.removeMercado = ''
+
+            //Mando la peticion al back-end
             deleteMercado(id).then((response) => {
                 getAllMercados();
             }).catch(error => {
@@ -109,6 +80,7 @@ const ListMercadosComponent = () => {
 
         }
         
+        //Asigno los errores si los hay
         setErrors(errorsCopy);
    }
 

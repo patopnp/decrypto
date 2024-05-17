@@ -1,30 +1,28 @@
 import React, {useState, useEffect} from 'react'
-import { createPais, updatePais } from '../services/ComitenteService';
-import { getPais } from '../services/ComitenteService';
+import { createPais, updatePais, getPais, listPaises } from '../services/EntidadesService';
 import { useNavigate, useParams } from 'react-router-dom';
-import { listPaises } from '../services/ComitenteService'
+
 
 const PaisesComponent = () => {
 
     const [paises, setPaises] = useState([])
-
-    function getAllPaises() {
-    listPaises().then((response) => {
-            setPaises(response.data);
-        }).catch(error => {
-            console.error(error);
-        })
-    }
-
     const [nombre, setNombre] = useState('')
-
     const {id} = useParams();
     const navigator = useNavigate();
 
+    //Inicializo sin errores
     const [errors, setErrors] = useState({
         descripcion: ''
     })
 
+    //Obtengo los paises desde el back-end
+    function getAllPaises() {
+        listPaises().then((response) => {
+                setPaises(response.data);
+            }).catch(error => {
+                console.error(error);
+            })
+    }
 
     function handleNombre(e){
         setNombre(e.target.value);
@@ -32,6 +30,7 @@ const PaisesComponent = () => {
 
     useEffect(()=> {
         getAllPaises();
+        //Si es modificacion lleno los datos por defecto
         if(id){
             getPais(id).then((response) => {
                 setNombre(response.data.nombre)
@@ -44,20 +43,21 @@ const PaisesComponent = () => {
 
         //Previene que se guarden los datos con defaults
         e.preventDefault();
-        console.log(nombre);
+
         //Controlamos que el formulario sea valido
         if (validateForm()) {
 
             const pais = {id, nombre}
-            console.log(nombre);
 
             if(id){
+                // Es modificacion
                 updatePais(id, pais).then((response) => {
                     console.log(response.data);
                     navigator('/paises');
                 }).catch(error => {console.error(error)})
             }
             else {
+                // Es creacion
                 createPais(pais).then((response) => {
                     console.log(response.data);
                     navigator('/paises')
@@ -92,6 +92,7 @@ const PaisesComponent = () => {
             errorsCopy.pais = ''
         }
 
+        // Asigno los errores si existen
         setErrors(errorsCopy);
 
         return valid;

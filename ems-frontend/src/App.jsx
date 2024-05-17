@@ -1,4 +1,3 @@
-import './App.css'
 import HeaderComponent from './components/HeaderComponent'
 import ListComitentesComponent from './components/ListComitentesComponent'
 import ComitentesComponent from './components/ComitentesComponent'

@@ -36,8 +36,7 @@ public class EntitiesServiceImpl implements EntitiesService {
     @Override
     public PaisDto createPais(PaisDto paisDto) {
 
-        //Comprobamos que el nombre del pais sea valido y no este presente
-        if (contienePaisValido(paisDto.getNombre())  && !paisRepository.findByNombre(paisDto.getNombre()).isPresent()) {
+        if (paisValido(paisDto)) {
             Pais pais = EntityMapper.mapToPais(paisDto);
             Pais savedPais = paisRepository.save(pais);
             return EntityMapper.mapToPaisDto(savedPais);
@@ -48,17 +47,25 @@ public class EntitiesServiceImpl implements EntitiesService {
 
     }
 
-    private boolean contienePaisValido(String pais) {
-        return PAISES_ADMITIDOS.contains(pais);
+    //Comprueba que el nombre del pais sea valido y no este presente
+    private boolean paisValido(PaisDto paisDto) {
+
+        boolean paisAdmitido = PAISES_ADMITIDOS.contains(paisDto.getNombre());
+        boolean paisYaPresente = !paisRepository.findByNombre(paisDto.getNombre()).isPresent();
+
+        return paisAdmitido && paisYaPresente;
+    }
+
+    //Devuelve el pais con el id del parametro o arroja error si el pais no existe
+    private Pais paisPorId(Long paisId) {
+        return paisRepository.findById(paisId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Pais con id " + paisId + "no existe"));
     }
 
     @Override
     public PaisDto getPaisById(Long paisId) {
-        //Comprobamos que el pais existe
-        Pais pais = paisRepository.findById(paisId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Comitente con id " + paisId + "no existe"));
-
+        Pais pais = paisPorId(paisId);
         return EntityMapper.mapToPaisDto(pais);
     }
 
@@ -71,19 +78,16 @@ public class EntitiesServiceImpl implements EntitiesService {
     @Override
     public PaisDto updatePais(Long paisId, PaisDto updatedPais) {
 
-        //Comprobamos que el nombre del pais sea valido y no este presente
-        if (!contienePaisValido(updatedPais.getNombre()) || paisRepository.findByNombre(updatedPais.getNombre()).isPresent()) {
+        if (paisValido(updatedPais)) {
             throw new InvalidResourceOperationException("El pais " + updatedPais.getNombre() + " no se encuentra entre los paises admitidos.");
         }
 
-        //tiene que tener todos los campos en el json para actualizarlos
-        //Comprobamos que el pais con ese id existe
-        Pais pais = paisRepository.findById(paisId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Pais con id " + paisId + "no existe"));
+        Pais pais = paisPorId(paisId);
 
+        //Asignamos el nombre modificado al pais
         pais.setNombre(updatedPais.getNombre());
 
+        //Guardamos el pais en la base de datos
         Pais updatedPaisResponse = paisRepository.save(pais);
 
         return EntityMapper.mapToPaisDto(updatedPaisResponse);
@@ -91,22 +95,35 @@ public class EntitiesServiceImpl implements EntitiesService {
 
     @Override
     public void deletePais(Long paisId) {
+        if (eliminacionPaisValida(paisId)) {
+            paisRepository.deleteById(paisId);
+        }
+    }
+
+    private boolean eliminacionPaisValida(Long paisId) {
         //Comprobamos que el pais esta cargado
-        Pais pais = paisRepository.findById(paisId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Pais con id " + paisId + " no existe"));
+        Pais pais = paisPorId(paisId);
 
         //Comprobamos que el pais no sea parte de algun mercado
         if (mercadoRepository.findByPais(pais).isPresent()){
             throw new InvalidResourceOperationException("Pais con id " + paisId + " esta siendo usado por un mercado.");
         }
-
-        paisRepository.deleteById(paisId);
-
+        return true;
     }
 
     @Override
     public ComitenteDto createComitente(ComitenteDto comitenteDto) {
+
+        //Verificamos validez de los mercados asignados
+        Set<Mercado> mercados = mercadosDelComitente(comitenteDto);
+
+        Comitente comitente = EntityMapper.mapToComitente(comitenteDto, mercados);
+        Comitente savedComitente = comitenteRepository.save(comitente);
+
+        return EntityMapper.mapToComitenteDto(savedComitente);
+    }
+
+    private Set<Mercado> mercadosDelComitente(ComitenteDto comitenteDto) {
 
         //Nos aseguramos que tenga al menos un mercado asignado
         if(comitenteDto.getMercadosId().isEmpty())
@@ -119,19 +136,19 @@ public class EntitiesServiceImpl implements EntitiesService {
                                 new ResourceNotFoundException("Mercado con id " + mercadoId + "no existe"))
         ).collect(Collectors.toSet());
 
-        Comitente comitente = EntityMapper.mapToComitente(comitenteDto, mercados);
-        Comitente savedComitente = comitenteRepository.save(comitente);
-
-        return EntityMapper.mapToComitenteDto(savedComitente);
+        return mercados;
     }
 
     @Override
     public ComitenteDto getComitenteById(Long comitenteId) {
-        Comitente comitente = comitenteRepository.findById(comitenteId)
+        Comitente comitente = comitentePorId(comitenteId);
+        return EntityMapper.mapToComitenteDto(comitente);
+    }
+
+    private Comitente comitentePorId(Long comitenteId) {
+        return comitenteRepository.findById(comitenteId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Comitente con id " + comitenteId + "no existe"));
-
-        return EntityMapper.mapToComitenteDto(comitente);
     }
 
     @Override
@@ -143,24 +160,17 @@ public class EntitiesServiceImpl implements EntitiesService {
     @Override
     public ComitenteDto updateComitente(Long comitenteId, ComitenteDto updatedComitente) {
 
-        //tiene que tener todos los campos en el json para actualizarlos
         //Comprobar que el comitente con ese id existe
-        Comitente comitente = comitenteRepository.findById(comitenteId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Comitente con id " + comitenteId + "no existe"));
-
-        comitente.setDescripcion(updatedComitente.getDescripcion());
+        Comitente comitente = comitentePorId(comitenteId);
 
         //Buscamos de acuerdo al id del mercado
-        Set<Mercado> mercados =  updatedComitente.getMercadosId().stream().map(
-                (mercadoId) -> mercadoRepository.findById(mercadoId)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException("Mercado con id " + mercadoId + "no existe"))
-        ).collect(Collectors.toSet());
+        Set<Mercado> mercados =  mercadosDelComitente(updatedComitente);
 
-        //Asignamos de acuerdo a los mercados encontrados
+        //Asignamos de campos actualizados
         comitente.setMercados(mercados);
+        comitente.setDescripcion(updatedComitente.getDescripcion());
 
+        //Guardamos el comitente actualizado en la base de datos
         Comitente updatedComitenteResponse = comitenteRepository.save(comitente);
 
         return EntityMapper.mapToComitenteDto(updatedComitenteResponse);
@@ -168,9 +178,8 @@ public class EntitiesServiceImpl implements EntitiesService {
 
     @Override
     public void deleteComitente(Long comitenteId) {
-        comitenteRepository.findById(comitenteId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Comitente con id " + comitenteId + "no existe"));
+        //Verificamos que existe algun comitente con este id.
+        comitentePorId(comitenteId);
         comitenteRepository.deleteById(comitenteId);
     }
 
@@ -178,22 +187,19 @@ public class EntitiesServiceImpl implements EntitiesService {
     public MercadoDto createMercado(MercadoDto mercadoDto) {
 
         //Verificamos que el pais existe
-        Pais pais = paisRepository.findByNombre(mercadoDto.getPais())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Pais con nombre " + mercadoDto.getPais() + " no existe"));
+        Pais pais = paisPorNombre(mercadoDto.getPais());
 
+        Mercado mercado = EntityMapper.mapToMercado(mercadoDto, pais);
 
-
-        //Buscamos de acuerdo al id del comitente
-        /*Set<Comitente> comitentes =  mercadoDto.getComitentesId().stream().map(
-                (comitenteId) -> comitenteRepository.findById(comitenteId)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException("Comitente con id " + comitenteId + "no existe"))
-        ).collect(Collectors.toSet());*/
-
-        Mercado mercado = EntityMapper.mapToMercado(mercadoDto, pais/*, comitentes*/);
         Mercado savedMercado = mercadoRepository.save(mercado);
         return EntityMapper.mapToMercadoDto(savedMercado);
+    }
+
+    //Devuelve el pais que tiene el nombre del parametro o arroja error si no existe
+    private Pais paisPorNombre(String nombrePais){
+        return paisRepository.findByNombre(nombrePais)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Pais con nombre " + nombrePais + " no existe"));
     }
 
     @Override
@@ -215,24 +221,27 @@ public class EntitiesServiceImpl implements EntitiesService {
     public MercadoDto updateMercado(Long mercadoId, MercadoDto updatedMercado) {
 
         //Verificamos que el pais existe
-        Pais pais = paisRepository.findByNombre(updatedMercado.getPais())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Pais con nombre " + updatedMercado.getPais() + " no existe"));
+        Pais pais = paisPorNombre(updatedMercado.getPais());
 
         //Verificamos que el mercado con ese id existe
-        Mercado mercado = mercadoRepository.findById(mercadoId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Mercado con id " + mercadoId + "no existe"));
+        Mercado mercado = mercadoPorId(mercadoId);
 
+        //Asignamos los campos del mercado actualizado
         mercado.setDescripcion(updatedMercado.getDescripcion());
-
         mercado.setCodigo(updatedMercado.getCodigo());
-
         mercado.setPais(pais);
 
+        //Guardamos en la base de datos
         Mercado updatedMercadoResponse = mercadoRepository.save(mercado);
 
         return EntityMapper.mapToMercadoDto(updatedMercadoResponse);
+    }
+
+    //Devuelve el mercado con mercadoId o arroja error si no existe
+    private Mercado mercadoPorId(Long mercadoId) {
+        return mercadoRepository.findById(mercadoId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Mercado con id " + mercadoId + "no existe"));
     }
 
     @Override
@@ -241,21 +250,31 @@ public class EntitiesServiceImpl implements EntitiesService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Mercado con id " + mercadoId + "no existe"));
 
-        //Borro mercadoId de comitente primero
-        for(Comitente comitente : comitenteRepository.findAll()){
-            if(comitente.getMercados().removeIf(mercado -> mercado.getId().equals(mercadoId))) {
+        borrarMercadoDeComitente(mercadoId);
+        mercadoRepository.deleteById(mercadoId);
+    }
 
-                //Compruebo que al eliminar el mercado no dejo a comitentes sin algun mercado asignado
-                if (comitente.getMercados().isEmpty()) {
-                    throw new InvalidResourceOperationException("El mercado "+ mercadoId + "no puede ser eliminado porque existen comitentes exclusivamente asignados a este mercado");
-                }
-                else {
-                    comitenteRepository.save(comitente);
-                }
-            }
+    // Borra id del mercado del comitente o arroja error si no es posible
+    private void borrarMercadoDeComitente(Long mercadoId){
+
+        List<Comitente> todosLosComitentes = comitenteRepository.findAll();
+
+        /*
+        Me aseguro de que todos los comitentes tengan asignado algun otro mercado ademas del mercado con mercadoId,
+        de lo contrario, quedaria un campo vacio y todos los comitentes deben tener asignado un mercado
+        */
+        boolean eliminacionInvalida = todosLosComitentes.stream().anyMatch(comitente -> comitente.getMercados().size()==1 && comitente.getMercados().stream().findAny().get().getId().equals(mercadoId) );
+
+        if (eliminacionInvalida) {
+            throw new InvalidResourceOperationException("El mercado "+ mercadoId + "no puede ser eliminado porque existen comitentes exclusivamente asignados a este mercado");
         }
 
-        mercadoRepository.deleteById(mercadoId);
+        //Elimino este mercado de todos los comitentes
+        for(Comitente comitente : todosLosComitentes){
+            if(comitente.getMercados().removeIf(mercado -> mercado.getId().equals(mercadoId))) {
+                comitenteRepository.save(comitente);
+            }
+        }
     }
 
     @Override
@@ -265,19 +284,23 @@ public class EntitiesServiceImpl implements EntitiesService {
 
         List<Pais> paises = paisRepository.findAll();
 
+        //Calculo las estadisticas para cada pais
         for (Pais p : paises) {
 
             Set<StatsDto.TotalPorMercado> mercadoPorPais = new HashSet<>();
             int totalComitentesPorPais = 0;
 
+            //El total de comitentes por pais considerando todos los mercados, se utilizara en el denominador
             for (Mercado m : p.getMercados()){
                 totalComitentesPorPais += m.getComitentes().size();
             }
+
             //Asegurarme de que cuando no hay comitente en mercado de algun pais no sea 0 el denominador, por ejemplo argentina podria no tener comitentes
             if(totalComitentesPorPais == 0) {
                 continue;
             }
 
+            //Para cada mercado de cada pais calculo el porcentaje de comitentes que perteneces a ese mercado
             for (Mercado m : p.getMercados()){
                 mercadoPorPais.add(new StatsDto.TotalPorMercado(m.getCodigo(), (double)(m.getComitentes().size()/(double)totalComitentesPorPais)*100));
             }
@@ -285,7 +308,6 @@ public class EntitiesServiceImpl implements EntitiesService {
             stats.add(new StatsDto(p.getNombre(), mercadoPorPais));
 
         }
-
 
         return stats;
     }

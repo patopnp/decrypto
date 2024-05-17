@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react'
-import { deletePais, listMercados, listPaises} from '../services/ComitenteService'
+import { deletePais, listMercados, listPaises} from '../services/EntidadesService'
 import { useNavigate } from 'react-router-dom'
 
 const ListPaisesComponent = () => {
@@ -7,19 +7,19 @@ const ListPaisesComponent = () => {
    const [mercados, setMercados] = useState([])
    const [paises, setPaises] = useState([])
 
+   //Inicializo errores en blanco
    const [errors, setErrors] = useState({
     removePais: ''
    })
 
    const navigator = useNavigate();
 
+   // Inicializo arreglos con datos del back-end
    useEffect(() => {
-        getAllPaises()
+        getAllPaises(),
+        getAllMercados()
    }, [])
 
-   useEffect(() => {
-        getAllMercados()
-    }, [])
 
    function getAllPaises() {
     listPaises().then((response) => {
@@ -28,28 +28,6 @@ const ListPaisesComponent = () => {
             console.error(error);
         })
     }
-
-    function getNombrePaises(paisesId) {
-        let txt = "";
-
-        //Para cada id busco el nombre del pais al que corresponde
-        paises.forEach(nombrePais);
-        
-        function nombrePais(value, index, array) {
-
-            let m = paises.find(buscarCoincidencia)
-
-            function buscarCoincidencia(value2, index, array) {
-              return value == value2.id;
-            }
-
-          txt += m["id"] + ": " + m["codigo"] + ", ";
-        }
-
-        return txt.slice(0,-2);
-    }
-
-
 
     function getAllMercados() {
         listMercados().then((response) => {
@@ -69,27 +47,23 @@ const ListPaisesComponent = () => {
 
    function removePais(id){
 
-        //Compruebo que el mercado se puede borrar, es decir que no dejo algun mercado sin pais
-
         const errorsCopy = {... errors} 
 
-        //
+        // Obtengo el nombre del pais a partir del id
         const nombrePais = paises.find(p => p.id == id).nombre;
-        console.log(nombrePais);
-        console.log(paises);
 
+        // Compruebo que el pais se puede borrar, es decir que no dejo algun mercado sin pais
         let operacionInvalida = mercados.some((c) => { 
-            //console.log(c.mercadosId[0] == id);
             return (c.pais ==  nombrePais)})
 
-        console.log(operacionInvalida);
-
         if(operacionInvalida) {
+            // Agrego el error
             errorsCopy.removePais = 'No se puede eliminar ' + nombrePais + ' porque un mercado lo tiene asignado como pais.'
             console.log("Validacion correcta");
         }
         else
         {
+            // Procedo a mandar peticion de eliminacion al backend
             errorsCopy.removePais = ''
             deletePais(id).then((response) => {
                 getAllPaises();
@@ -99,6 +73,7 @@ const ListPaisesComponent = () => {
 
         }
         
+        // Asigno los errores si los hay
         setErrors(errorsCopy);
    }
 

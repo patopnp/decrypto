@@ -1,10 +1,11 @@
 import React, {useEffect, useState} from 'react'
-import { listStats } from '../services/ComitenteService'
+import { listStats } from '../services/EntidadesService'
 
 const ListStatsComponent = () => {
 
    const [stats, setStats] = useState([])
 
+   // Cargo las estadisticas con datos del back-end
    useEffect(() => {
         getAllStats()
    }, [])

@@ -1,13 +1,12 @@
 import React, {useState, useEffect} from 'react'
-import { createComitente, updateComitente } from '../services/ComitenteService';
-import { getComitente } from '../services/ComitenteService';
+import { createComitente, updateComitente, getComitente, listMercados } from '../services/EntidadesService';
 import { useNavigate, useParams } from 'react-router-dom';
-import { listMercados } from '../services/ComitenteService'
 
 const ComitentesComponent = () => {
 
     const [mercados, setMercados] = useState([])
 
+    // Cargo los mercados desde el back-end
     useEffect(() => {
         getAllMercados()
     }, [])
@@ -36,13 +35,12 @@ const ComitentesComponent = () => {
     }
 
     function handleMercadosId(e){
-
         setMercadosIdString(e.target.value);
     }
 
     function handleMercadoId(e){
 
-        //pasar un array
+        //Cargo el campo MercadosIdString con el id del dropdown, si no esta vacio agrego una coma
         if(mercadosIdString == '') {
             setMercadosIdString(e.target.value);
         }
@@ -52,7 +50,7 @@ const ComitentesComponent = () => {
     }
 
     useEffect(()=> {
-
+        // Tiene id como parametro por tanto es una modificacion
         if(id){
             getComitente(id).then((response) => {
                 setDescripcion(response.data.descripcion),
@@ -74,13 +72,16 @@ const ComitentesComponent = () => {
             const comitente = {descripcion, mercadosId}
             console.log(comitente);
 
+            
             if(id){
+                // Tiene id entonces es modificacion
                 updateComitente(id, comitente).then((response) => {
                     console.log(response.data);
                     navigator('/comitentes');
                 }).catch(error => {console.error(error)})
             }
             else {
+                // No tiene id entonces es creacion
                 createComitente(comitente).then((response) => {
                     console.log(response.data);
                     navigator('/comitentes')
@@ -106,10 +107,11 @@ const ComitentesComponent = () => {
 
         const mercadosIds = mercadosIdString.split(", ");
 
+        //Convierto a String los id de mercados para compararlo con el valor del campo ingresado
         const mercadosIdPermitidosString = mercados.flatMap(m => m.id.toString());
-        
         errorsCopy.mercadosIdString = '';
 
+        //Compruebo que existe el mercado en la base de datos
         mercadosIds.forEach(comprobarIdExista);
 
         function comprobarIdExista(mids, index, array) {
@@ -119,14 +121,9 @@ const ComitentesComponent = () => {
             }
         }
 
-
         setErrors(errorsCopy);
-
         return valid;
     }
-
-
-
 
     function pageTitle(){
         if(id) {

@@ -1,25 +1,26 @@
 import React from 'react'
 
+//Barra de navegacion superior
 const HeaderComponent = () => {
   return (
     <div>
         <header>
-        <nav class="navbar navbar-dark navbar-expand-sm bg-dark">
+        <nav className="navbar navbar-dark navbar-expand-sm bg-dark">
 
-          <div class="container-fluid">
+          <div className="container-fluid">
           
-            <ul class="navbar-nav">
-              <li class="nav-item">
-                <a class="nav-link" href="/comitentes">Comitentes</a>
+            <ul className="navbar-nav">
+              <li className="nav-item">
+                <a className="nav-link" href="/comitentes">Comitentes</a>
               </li>
-              <li class="nav-item">
-                <a class="nav-link" href="/mercados">Mercados</a>
+              <li className="nav-item">
+                <a className="nav-link" href="/mercados">Mercados</a>
               </li>
-              <li class="nav-item">
-                <a class="nav-link" href="/paises">Paises</a>
+              <li className="nav-item">
+                <a className="nav-link" href="/paises">Paises</a>
               </li>
-              <li class="nav-item">
-                <a class="nav-link" href="/stats">Estadisticas</a>
+              <li className="nav-item">
+                <a className="nav-link" href="/stats">Estadisticas</a>
               </li>
             </ul>
           </div>

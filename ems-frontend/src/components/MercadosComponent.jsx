@@ -1,28 +1,28 @@
 import React, {useState, useEffect} from 'react'
-import { createMercado, updateMercado } from '../services/ComitenteService';
-import { getMercado } from '../services/ComitenteService';
+import { createMercado, updateMercado, getMercado, listPaises } from '../services/EntidadesService';
 import { useNavigate, useParams } from 'react-router-dom';
-import { listPaises } from '../services/ComitenteService'
 
 const MercadosComponent = () => {
 
     const [paises, setPaises] = useState([])
+    const [codigo, setCodigo] = useState('')
+    const [descripcion, setDescripcion] = useState('')
+    const [pais, setPais] = useState('')
+    const {id} = useParams();
+    const navigator = useNavigate();
 
-    function getAllPaises() {
+    // Cargo la lista de paises que podrias llenar el campo pais del mercado
+    function getAllPaises(id) {
     listPaises().then((response) => {
             setPaises(response.data);
-            setPais(response.data[0].nombre)
+            // Asigno primer pais por default si no es modificacion
+            if(!id) {
+                setPais(response.data[0].nombre)
+            }
         }).catch(error => {
             console.error(error);
         })
     }
-
-    const [codigo, setCodigo] = useState('')
-    const [descripcion, setDescripcion] = useState('')
-    const [pais, setPais] = useState('')
-
-    const {id} = useParams();
-    const navigator = useNavigate();
 
     const [errors, setErrors] = useState({
         descripcion: ''
@@ -41,7 +41,8 @@ const MercadosComponent = () => {
     }
 
     useEffect(()=> {
-        getAllPaises();
+        getAllPaises(id);
+        // Cargo los datos ya asignados por defecto en los campos para la modificacion
         if(id){
             getMercado(id).then((response) => {
                 setCodigo(response.data.codigo),
@@ -85,11 +86,11 @@ const MercadosComponent = () => {
         //copiamos los errores en errorsCopy
         const errorsCopy = {... errors} 
 
-        //Si el campo descripcion esta vacio agrego error
+        //Si el campo codigo esta vacio agrego error
         if (codigo.trim()) {
             errorsCopy.codigo = '';
         } else {
-            errorsCopy.codigo = 'Descripcion es un campo requerido.';
+            errorsCopy.codigo = 'Codigo es un campo requerido.';
             valid = false;
         }
 

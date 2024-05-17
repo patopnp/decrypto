@@ -1,22 +1,19 @@
 import React, {useEffect, useState} from 'react'
-import { deleteComitente, listComitentes, listMercados } from '../services/ComitenteService'
+import { deleteComitente, listComitentes, listMercados } from '../services/EntidadesService'
 import { useNavigate } from 'react-router-dom'
 
 const ListComitentesComponent = () => {
 
    const [comitentes, setComitentes] = useState([])
-
    const [mercados, setMercados] = useState([])
 
     const navigator = useNavigate();
 
+   //Inicializo las variables comitentes y mercados con los registros de la base de datos
    useEffect(() => {
         getAllComitentes()
-   }, [])
-
-   useEffect(() => {
         getAllMercados()
-    }, [])
+   }, [])
 
    function getAllMercados() {
     listMercados().then((response) => {
@@ -25,6 +22,14 @@ const ListComitentesComponent = () => {
             console.error(error);
         })
     }
+
+    function getAllComitentes() {
+        listComitentes().then((response) => {
+            setComitentes(response.data);
+        }).catch(error => {
+            console.error(error);
+        })
+   }
 
     function getCodigoMercados(mercadosId) {
         let txt = "";
@@ -40,21 +45,12 @@ const ListComitentesComponent = () => {
               return value == value2.id;
             }
 
+          // Muestro el id seguido del codigo de mercado
           txt += m["id"] + ": " + m["codigo"] + ", ";
         }
 
         return txt.slice(0,-2);
     }
-
-
-
-   function getAllComitentes() {
-        listComitentes().then((response) => {
-            setComitentes(response.data);
-        }).catch(error => {
-            console.error(error);
-        })
-   }
 
    function addNewComitente(){
         navigator('/add-comitente')
@@ -64,6 +60,7 @@ const ListComitentesComponent = () => {
         navigator(`/edit-comitente/${id}`)
    }
 
+   //Borro el comitente y actualizo la pagina
    function removeComitente(id){
         deleteComitente(id).then((response) => {
             getAllComitentes();
